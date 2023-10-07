@@ -6,7 +6,7 @@ export default function Card() {
   return (
     <div className={styles.container}>
       <div className={styles.imageContainer}>
-        <Image src="/p1.jpeg" alt="" fill className={styles.image}/>
+        <Image src="/p1.jpeg" alt="" fill className={styles.image} />
       </div>
       <div className={styles.textContainer}>
         <div className={styles.detail}>
@@ -22,7 +22,9 @@ export default function Card() {
           possimus odit debitis nihil cum, excepturi dolor nesciunt. Officiis,
           provident. Hic, blanditiis id!
         </p>
-        <Link href="/" className={styles.link}>Read More</Link>
+        <Link href="/" className={styles.link}>
+          Read More
+        </Link>
       </div>
     </div>
   );
