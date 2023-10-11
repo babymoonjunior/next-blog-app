@@ -2,39 +2,114 @@
 
 import Image from "next/image";
 import styles from "./writePage.module.css";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.bubble.css";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import {
+  getStorage,
+  ref,
+  uploadBytesResumable,
+  getDownloadURL,
+} from "firebase/storage";
+import { app } from "@/utils/firebase";
+
+const storage = getStorage(app);
 
 export default function WritePage() {
   const [open, setOpen] = useState(false);
-  const [value, setValue] = useState("");
+  const [file, setFile] = useState(null);
+  const [media, setMedia] = useState("");
+  const [value, setValue] = useState(""); //set description
+  const [title, setTitle] = useState("");
 
   const { status } = useSession();
   const router = useRouter();
+
+  useEffect(() => {
+    const upload = () => {
+      const name = new Date().getTime + file.name; //Gen ชื่อไฟล์ให้ไม่ซ้ำ
+      const storageRef = ref(storage, name);
+
+      const uploadTask = uploadBytesResumable(storageRef, file);
+
+      uploadTask.on(
+        "state_changed",
+        (snapshot) => {
+          const progress =
+            (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          console.log("Upload is " + progress + "% done");
+          switch (snapshot.state) {
+            case "paused":
+              console.log("Upload is paused");
+              break;
+            case "running":
+              console.log("Upload is running");
+              break;
+          }
+        },
+        (error) => {},
+        () => {
+          getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+            setMedia(downloadURL); //อัพโหลด URL
+          });
+        }
+      );
+    };
+    file && upload();
+  }, [file]);
 
   if (status === "loading") {
     return <div className={styles.loading}>Loading...</div>;
   }
 
-  if (status === "authenticated") {
+  if (status === "unauthenticated") {
     router.push("/");
+  }
+
+  //แปลง format slug ex. wennie travel => wennie-travel
+  const slugify = (str) => 
+    str.toLowerCase().trim().replace(/[^\w\s-]/g,"").replace(/[\s_-]+/g,"-").replace(/^-+|-+$/g,"");
+
+  //คลิก post ข้อความ
+  const handleSubmit = async () => {
+    const res = await fetch("/api/posts", {
+      method: "POST",
+      body: JSON.stringify({
+        title,
+        desc: value,
+        img: media,
+        slug: slugify(title),
+        catSlug: "travel",
+      })
+    })
+    console.log(res);
   }
 
   return (
     <div className={styles.container}>
-      <input type="text" placeholder="Title" className={styles.input} />
+      <input type="text" placeholder="Title" className={styles.input} onChange={ e => setTitle(e.target.value)} />
+      {/* TODO: ADD CATEGORY */}
       <div className={styles.editor}>
         <button className={styles.button} onClick={() => setOpen(!open)}>
           <Image src="/plus.png" alt="" width={16} height={16} />
         </button>
         {open && (
           <div className={styles.add}>
+            <input
+              type="file"
+              id="image"
+              onChange={(e) => setFile(e.target.files[0])}
+              style={{ display: "none" }}
+            />
+
             <button className={styles.addButton}>
-              <Image src="/image.png" alt="" width={16} height={16} />
+              <label htmlFor="image">
+                <Image src="/image.png" alt="" width={16} height={16} />
+              </label>
             </button>
+
             <button className={styles.addButton}>
               <Image src="/external.png" alt="" width={16} height={16} />
             </button>
@@ -51,7 +126,7 @@ export default function WritePage() {
           placeholder="Tell your story..."
         />
       </div>
-      <button className={styles.publish}>Publish</button>
+      <button className={styles.publish} onClick={handleSubmit}>Publish</button>
     </div>
   );
 }

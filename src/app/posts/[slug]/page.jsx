@@ -22,7 +22,7 @@ export default async function SinglePage({ params }) {
 
   const data = await getData(slug);
 
-  console.log(data?.post?.user?.name);
+  console.log(data);
 
   return (
     <div className={styles.container}>
